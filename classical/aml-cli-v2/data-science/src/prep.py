@@ -36,6 +36,9 @@ def parse_args():
     # parser.add_argument("--azure_client_secret", type=str)
     # parser.add_argument("--azure_subscription_id", type=str)
     # parser.add_argument("--adls_key", type=str)
+
+    parser.add_argument("--raw_data", type=str)
+    parser.add_argument("--aml_data", type=str)
     args = parser.parse_args()
 
 def set_environment_variables():
@@ -62,7 +65,6 @@ def set_spark_session():
 def get_data_source_path(feathr_client):
     DATA_STORE_PATH = TemporaryDirectory().name
     DATA_FILE_PATH = str(Path(DATA_STORE_PATH, "nyc_taxi.csv"))
-    df_raw = nyc_taxi.get_spark_df(spark=spark, local_cache_path=DATA_FILE_PATH)
     # Define data source path
     if feathr_client.spark_runtime == "local" or (feathr_client.spark_runtime == "databricks" and is_databricks()):
         # In local mode, we can use the same data path as the source.
@@ -80,6 +82,7 @@ def main(args):
 
     set_spark_session()
     data_source_path = get_data_source_path(feathr_client)
+    df_raw = utils.get_spark_df(data_url=args.raw_data, spark=spark, local_cache_path=data_source_path)
 
     TIMESTAMP_COL = "lpep_dropoff_datetime"
     TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss"
@@ -208,7 +211,6 @@ def main(args):
 
     # Materialize features
 
-    df_raw = nyc_taxi.get_spark_df(spark=spark, local_cache_path=data_source_path)
     # Get the last date from the dataset
     backfill_timestamp = (
         df_raw
@@ -267,16 +269,36 @@ def main(args):
 
     df_pandas = df_pandas.fillna(0)
 
-    # Create/retrieve the necessary clients and upload the data
+    # # Create/retrieve the necessary clients and upload the data
 
-    adls_system_url = f"{utils.fs_config.get('adls_scheme')}://{utils.fs_config.get('adls_account')}.dfs.core.windows.net"
-    service_client = DataLakeServiceClient(
-        account_url=adls_system_url, credential=os.environ['ADLS_KEY'])
+    # adls_system_url = f"{utils.fs_config.get('adls_scheme')}://{utils.fs_config.get('adls_account')}.dfs.core.windows.net"
+    # service_client = DataLakeServiceClient(
+    #     account_url=adls_system_url, credential=os.environ['ADLS_KEY'])
 
 
-    file_system_client = utils.create_or_retrieve_file_system(service_client, utils.fs_config.get('adls_file_system'))
-    directory_client = utils.create_or_retrieve_directory(file_system_client, utils.fs_config.get('adls_data_directory'))
-    file_client = utils.create_or_retrieve_file(directory_client, utils.fs_config.get('adls_data_file'))
-    # Convert Pandas Dataframe to CSV and upload to the specified file
-    output = df_pandas.to_csv (index_label="idx", encoding = "utf-8")
-    file_client.upload_data(output, overwrite=True)
+    # file_system_client = utils.create_or_retrieve_file_system(service_client, utils.fs_config.get('adls_file_system'))
+    # directory_client = utils.create_or_retrieve_directory(file_system_client, utils.fs_config.get('adls_data_directory'))
+    # file_client = utils.create_or_retrieve_file(directory_client, utils.fs_config.get('adls_data_file'))
+    # # Convert Pandas Dataframe to CSV and upload to the specified file
+    # output = df_pandas.to_csv (index_label="idx", encoding = "utf-8")
+    # file_client.upload_data(output, overwrite=True)
+
+    df_pandas.to_parquet((Path(args.aml_data) / "aml.parquet"))
+
+
+if __name__ == '__main__':
+
+    # ---------- Parse Arguments ----------- #
+    # -------------------------------------- #
+
+    args = parse_args()
+
+    lines = [
+        f"Raw data path: {args.raw_data}",
+        f"Train dataset output path: {args.train_data}"
+    ]
+
+    for line in lines:
+        print(line)
+    
+    main(args)

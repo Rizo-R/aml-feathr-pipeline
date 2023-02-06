@@ -13,9 +13,7 @@ inputs:
   table_name: 'taximonitoring'
 
 outputs:
-  train_data:
-  val_data:
-  test_data:
+  aml_data:
   trained_model:
   evaluation_output:
   model_info_output_path:
@@ -40,23 +38,6 @@ jobs:
       --feathr_config_path 'feathr_config.yaml'
     environment: azureml:feathr-demo-env@latest
 
-  prep_data:
-    name: prep_data
-    display_name: prep-data
-    code: ../../../data-science/src
-    command: >-
-      pip install -r requirements/feathr-requirements.txt --use-deprecated=legacy-resolver &&
-      python prep.py
-    environment: azureml:feathr-demo-env@latest
-    # inputs:
-    #   data: ${{parent.inputs.input}}
-    #   enable_monitoring: ${{parent.inputs.enable_monitoring}}
-    #   table_name: ${{parent.inputs.table_name}}
-    # outputs:
-    #   train_data: ${{parent.outputs.train_data}}
-    #   val_data: ${{parent.outputs.val_data}}
-    #   test_data: ${{parent.outputs.test_data}}
-
   create_aml_config:
     name: create_aml_config
     display_name: create-feathr-config
@@ -65,6 +46,25 @@ jobs:
       python create_aml_config.py
       --aml_config_path 'aml_config.json'
     environment: azureml:feathr-demo-env@latest
+
+  prep_data:
+    name: prep_data
+    display_name: prep-data
+    code: ../../../data-science/src
+    command: >-
+      pip install -r requirements/feathr-requirements.txt --use-deprecated=legacy-resolver &&
+      python prep.py
+      --raw_data ${{inputs.raw_data}}
+      --aml_data ${{outputs.aml_data}}
+    environment: azureml:feathr-demo-env@latest
+    inputs:
+      raw_data: ${{parent.inputs.input}}
+    #   enable_monitoring: ${{parent.inputs.enable_monitoring}}
+    #   table_name: ${{parent.inputs.table_name}}
+    outputs:
+      train_data: ${{parent.outputs.aml_data}}
+    #   val_data: ${{parent.outputs.val_data}}
+    #   test_data: ${{parent.outputs.test_data}}
 
   train_model:
     name: train_model
@@ -76,10 +76,12 @@ jobs:
       --config_path 'aml_config.json'
       --data_path ${{inputs.data}}
       --registered_model_name feathr-aml-demo
+      --model_output ${{outputs.model_output}}
     environment: azureml:feathr-demo-env@latest
     inputs:
-      # TODO: Remove hardcoded data path
-      data: ${{parent.inputs.input}}
+      data: ${{parent.jobs.prep_data.outputs.train_data}}
+    outputs:
+      model_output: ${{parent.outputs.trained_model}}
 
 
   # evaluate_model:

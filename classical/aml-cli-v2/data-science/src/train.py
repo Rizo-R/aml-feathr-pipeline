@@ -16,6 +16,7 @@ import mlflow.sklearn
 
 import utils
 from dotenv import load_dotenv
+from pathlib import Path
 
 def parse_args():
     '''Parse input arguments.'''
@@ -23,10 +24,7 @@ def parse_args():
     parser.add_argument("--data_path", type=str, help="Path to input data.")
     parser.add_argument("--registered_model_name", type=str, help="Model name.")
     parser.add_argument("--config_path", type=str, help="Path to AML config file.")
-    parser.add_argument("--azure_tenant_id", type=str)
-    parser.add_argument("--azure_client_id", type=str)
-    parser.add_argument("--azure_client_secret", type=str)
-    parser.add_argument("--adls_key", type=str)
+    parser.add_argument("--model_output", type=str, help="Path to output model.")
 
     args = parser.parse_args()
 
@@ -41,28 +39,21 @@ def main(args):
     ml_client = MLClient.from_config(DefaultAzureCredential(), path=args.config_path)
     ws = ml_client.workspaces.get(ml_client.workspace_name) 
 
+    df = pd.read_parquet(Path(args.data_path))
     # df = pd.read_csv(args.data_path, header=1, index_col=0)
-    # Create/retrieve the necessary clients and upload the data
-    from io import BytesIO
-    from azure.storage.filedatalake import DataLakeServiceClient 
-    ADLS_SCHEME = 'https'
-    RESOURCE_PREFIX = "rizodeploy11"
-    ADLS_SYSTEM_URL = f"{ADLS_SCHEME}://{RESOURCE_PREFIX}dls.dfs.core.windows.net"
-    ADLS_FILE_SYSTEM = f"{RESOURCE_PREFIX}fs"
-    ADLS_DATA_DIRECTORY = "feathr_demo_data"
-    ADLS_DATA_FILE = "data.csv"
-
-    service_client = DataLakeServiceClient(
-        account_url=ADLS_SYSTEM_URL, credential=os.environ['ADLS_KEY'])
+    # # Create/retrieve the necessary clients and upload the data
+    # adls_system_url = f"{utils.fs_config.get('adls_scheme')}://{utils.fs_config.get('adls_account')}.dfs.core.windows.net"
+    # service_client = DataLakeServiceClient(
+    #     account_url=adls_system_url, credential=os.environ['ADLS_KEY'])
 
 
-    file_system_client = utils.create_or_retrieve_file_system(service_client, ADLS_FILE_SYSTEM)
-    directory_client = utils.create_or_retrieve_directory(file_system_client, ADLS_DATA_DIRECTORY)
-    file_client = utils.create_or_retrieve_file(directory_client, ADLS_DATA_FILE)
-    download = file_client.download_file()
-    downloaded_bytes = download.readall()
-    df = pd.read_csv(BytesIO(downloaded_bytes))
-    # Convert Pandas Dataframe to CSV and upload to the specified file
+    # file_system_client = utils.create_or_retrieve_file_system(service_client, utils.fs_config.get('adls_file_system'))
+    # directory_client = utils.create_or_retrieve_directory(file_system_client, utils.fs_config.get('adls_data_directory'))
+    # file_client = utils.create_or_retrieve_file(directory_client, utils.fs_config.get('adls_data_file'))
+    # # Download the file
+    # download = file_client.download_file()
+    # downloaded_bytes = download.readall()
+    # df = pd.read_csv(BytesIO(downloaded_bytes))
 
     # Start Logging
     mlflow.set_tracking_uri(ws.mlflow_tracking_uri)
@@ -87,17 +78,17 @@ def main(args):
     }
 
 
-    reg = ensemble.HistGradientBoostingRegressor(**params)
-    reg.fit(X_train, y_train)
+    model = ensemble.HistGradientBoostingRegressor(**params)
+    model.fit(X_train, y_train)
 
-    mse = mean_squared_error(y_test, reg.predict(X_test))
+    mse = mean_squared_error(y_test, model.predict(X_test))
     print("The mean squared error (MSE) on test set: {:.4f}".format(mse))
     mlflow.log_metric("MSE", mse)
 
     # Registering the model to the workspace
     print("Registering the model via MLFlow")
     mlflow.sklearn.log_model(
-        sk_model=reg,
+        sk_model=model,
         registered_model_name=args.registered_model_name,
         artifact_path=args.registered_model_name
     )
@@ -105,8 +96,9 @@ def main(args):
     # # Saving the model to a file
     print("Saving the model via MLFlow")
     mlflow.sklearn.save_model(
-        sk_model=reg,
-        path=os.path.join(args.registered_model_name, "trained_model"),
+        sk_model=model,
+        # path=os.path.join(args.registered_model_name, "trained_model"),
+        path=args.model_output
     )
     ###########################
     #</save and register model>
@@ -114,6 +106,18 @@ def main(args):
     mlflow.end_run()
 
 if __name__ == '__main__':
+
+    # ---------- Parse Arguments ----------- #
+    # -------------------------------------- #
+
+    args = parse_args()
+
+    lines = [
+        f"AML train data path: {args.data_path}"
+    ]
+
+    for line in lines:
+        print(line)
     
     args = parse_args()
 

@@ -13,8 +13,7 @@ variables:
   # - group: env-variables
 
 trigger:
-  # - none
-  - main
+  - none
 
 pool:
   vmImage: ubuntu-20.04
