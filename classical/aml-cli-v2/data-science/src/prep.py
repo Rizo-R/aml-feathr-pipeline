@@ -1,3 +1,9 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+"""
+Prepares raw data and uses Feathr feature store to create additional features for further training
+"""
+
 from pyspark.sql import DataFrame
 from feathr import INPUT_CONTEXT, HdfsSource
 from feathr import BOOLEAN, FLOAT, INT32, ValueType

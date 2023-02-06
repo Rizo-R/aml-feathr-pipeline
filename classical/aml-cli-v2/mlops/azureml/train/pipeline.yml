@@ -8,14 +8,13 @@ description: Training Pipeline to train a model that predicts taxi fare price, u
 inputs:
   input:
     type: uri_file
-    path: azureml:taxi-data@latest
+    path: azureml:feathr-data@latest
   enable_monitoring: 'false'
   table_name: 'taximonitoring'
 
 outputs:
   aml_data:
   trained_model:
-  evaluation_output:
   model_info_output_path:
 # </inputs_and_outputs>
 
@@ -75,7 +74,6 @@ jobs:
       python train.py
       --config_path 'aml_config.json'
       --data_path ${{inputs.data}}
-      --registered_model_name feathr-aml-demo
       --model_output ${{outputs.model_output}}
     environment: azureml:feathr-demo-env@latest
     inputs:
@@ -102,21 +100,19 @@ jobs:
   #   outputs:
   #     evaluation_output: ${{parent.outputs.evaluation_output}}
 
-  # register_model:
-  #   name: register_model
-  #   display_name: register-model
-  #   code: ../../../data-science/src
-  #   command: >-
-  #     python register.py
-  #     --model_name ${{inputs.model_name}}
-  #     --model_path ${{inputs.model_path}}
-  #     --evaluation_output ${{inputs.evaluation_output}}
-  #     --model_info_output_path ${{outputs.model_info_output_path}}
-  #   environment: azureml:taxi-train-env@latest
-  #   inputs:
-  #     model_name: "taxi-model"
-  #     model_path: ${{parent.jobs.train_model.outputs.model_output}}
-  #     evaluation_output: ${{parent.jobs.evaluate_model.outputs.evaluation_output}}
-  #   outputs:
-  #     model_info_output_path: ${{parent.outputs.model_info_output_path}}
+  register_model:
+    name: register_model
+    display_name: register-model
+    code: ../../../data-science/src
+    command: >-
+      python register.py
+      --model_name ${{inputs.model_name}}
+      --model_path ${{inputs.model_path}}
+      --model_info_output_path ${{outputs.model_info_output_path}}
+    environment: azureml:feathr-demo-env@latest
+    inputs:
+      model_name: "taxi-model"
+      model_path: ${{parent.jobs.train_model.outputs.model_output}}
+    outputs:
+      model_info_output_path: ${{parent.outputs.model_info_output_path}}
 # </jobs>

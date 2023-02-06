@@ -1,3 +1,8 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+"""
+Trains ML model using training dataset. Saves trained model.
+"""
 
 import argparse
 import os
@@ -22,7 +27,7 @@ def parse_args():
     '''Parse input arguments.'''
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", type=str, help="Path to input data.")
-    parser.add_argument("--registered_model_name", type=str, help="Model name.")
+    # parser.add_argument("--registered_model_name", type=str, help="Model name.")
     parser.add_argument("--config_path", type=str, help="Path to AML config file.")
     parser.add_argument("--model_output", type=str, help="Path to output model.")
 
@@ -86,12 +91,12 @@ def main(args):
     mlflow.log_metric("MSE", mse)
 
     # Registering the model to the workspace
-    print("Registering the model via MLFlow")
-    mlflow.sklearn.log_model(
-        sk_model=model,
-        registered_model_name=args.registered_model_name,
-        artifact_path=args.registered_model_name
-    )
+    # print("Registering the model via MLFlow")
+    # mlflow.sklearn.log_model(
+    #     sk_model=model,
+    #     registered_model_name=args.registered_model_name,
+    #     artifact_path=args.registered_model_name
+    # )
 
     # # Saving the model to a file
     print("Saving the model via MLFlow")
