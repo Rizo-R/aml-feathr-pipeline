@@ -61,7 +61,7 @@ jobs:
     #   enable_monitoring: ${{parent.inputs.enable_monitoring}}
     #   table_name: ${{parent.inputs.table_name}}
     outputs:
-      train_data: ${{parent.outputs.aml_data}}
+      aml_data: ${{parent.outputs.aml_data}}
     #   val_data: ${{parent.outputs.val_data}}
     #   test_data: ${{parent.outputs.test_data}}
 
